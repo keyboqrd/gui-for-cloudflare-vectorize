@@ -1,0 +1,60 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: 'Build workflow Run ID (Leave empty to use the latest successful build)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Create Release from Artifacts
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: get_version
+        run: |
+          VERSION=$(jq -r .version package.json)
+          echo "version=v$VERSION" >> $GITHUB_ENV
+          echo "Found version: v$VERSION"
+
+      - name: Download Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RUN_ID="${{ github.event.inputs.build_run_id }}"
+          
+          if [ -z "$RUN_ID" ]; then
+            echo "No run_id provided. Finding the latest successful build run..."
+            RUN_ID=$(gh run list --workflow=build.yml --status=success --limit 1 --json databaseId --jq '.[0].databaseId')
+            if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
+              echo "Error: Could not find any successful build runs."
+              exit 1
+            fi
+            echo "Found latest run ID: $RUN_ID"
+          else
+            echo "Using provided run ID: $RUN_ID"
+          fi
+          
+          # Download artifacts
+          gh run download $RUN_ID --name app-windows-executable --dir assets/windows || true
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.version }}
+          name: Release ${{ env.version }}
+          draft: false
+          prerelease: false
+          files: |
+            assets/**/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

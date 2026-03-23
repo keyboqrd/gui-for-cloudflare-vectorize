@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>GUI for Cloudflare Vectorize</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 text-gray-800 h-screen flex flex-col font-sans">
+
+  <div class="bg-slate-800 p-3 shadow-md flex flex-wrap items-center justify-between text-sm text-white shrink-0 gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="font-bold text-orange-400 text-lg">GUI for Cloudflare Vectorize</div>
+      <button id="langToggleBtn" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-sm h-8">Switch
+        Language</button>
+    </div>
+    <div class="flex items-center gap-2 flex-wrap">
+      <input id="accountId" type="text" placeholder="Account ID"
+        class="px-2 py-1 rounded bg-slate-700 border-none outline-none focus:ring-2 focus:ring-orange-500 w-full sm:w-40 md:w-64 h-8">
+      <input id="token" type="password" placeholder="API Token"
+        class="px-2 py-1 rounded bg-slate-700 border-none outline-none focus:ring-2 focus:ring-orange-500 w-full sm:w-40 md:w-80 h-8">
+      <button id="saveBtn" class="bg-gray-600 hover:bg-gray-500 px-2 py-1 rounded transition text-sm h-8">Save and
+        Connect</button>
+    </div>
+  </div>
+
+  <div class="bg-white border-b p-4 shadow-sm flex flex-col gap-4 shrink-0">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <!-- Left group: Select Index & Refresh List -->
+      <div class="flex items-center gap-3 md:gap-4">
+        <span id="labelIndex" class="font-medium text-gray-700">Select Index:</span>
+        <select id="indexSelect"
+          class="border border-gray-300 rounded px-2 py-1 w-full md:w-64 bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 h-8">
+          <option value="">-- Please connect account first --</option>
+        </select>
+        <button id="refreshIndexBtn" class="text-blue-500 hover:text-blue-700 text-sm hidden">Refresh List</button>
+      </div>
+
+      <!-- Right group: Index Info & Refresh Current -->
+      <div class="flex items-center gap-3">
+        <span id="indexInfo" class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded hidden"></span>
+        <button id="refreshCurrentIndexBtn" class="text-blue-500 hover:text-blue-700 text-sm hidden">Refresh Current Index</button>
+      </div>
+    </div>
+
+    <div class="border-b bg-white flex justify-between items-center pr-4">
+      <div class="flex gap-0">
+        <button id="tabSample"
+          class="search-tab tab-active px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-700 flex items-center justify-center">Random
+          Sample</button>
+        <button id="tabIds"
+          class="search-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800 flex items-center justify-center">Exact
+          ID Search</button>
+        <button id="tabSearch"
+          class="search-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-800 flex items-center justify-center">Content
+          Similarity Search</button>
+      </div>
+      <button id="deleteSelectedBtn" disabled
+        class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded shadow transition disabled:opacity-50 flex items-center justify-center gap-2 min-w-[120px] h-8 text-sm">
+        <span>Delete Selected</span>
+        <span id="selectedCount" class="bg-red-700 px-2 py-0.5 rounded-full text-xs">0</span>
+      </button>
+    </div>
+
+    <div class="bg-white p-4">
+      <div id="content-sample" class="search-content">
+        <button id="fetchSampleBtn" disabled
+          class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded shadow transition disabled:opacity-50 disabled:cursor-not-allowed h-8 flex items-center justify-center">
+          Sample 10 entries
+        </button>
+      </div>
+
+      <div id="content-ids" class="search-content hidden">
+        <div class="flex gap-2">
+          <input id="specificIds" type="text" placeholder="Input ID (comma separated)"
+            class="border border-gray-300 rounded px-2 py-1 flex-1 text-sm outline-none focus:ring-2 focus:ring-teal-500 h-8">
+          <button id="fetchIdsBtn" disabled
+            class="bg-teal-500 hover:bg-teal-600 text-white px-3 py-2 rounded shadow transition disabled:opacity-50 shrink-0 h-8 flex items-center justify-center">
+            Search
+          </button>
+        </div>
+      </div>
+
+      <div id="content-search" class="search-content hidden">
+        <div class="space-y-2">
+          <input id="searchText" type="text" placeholder="Input search content"
+            class="border border-gray-300 rounded px-2 py-1 w-full text-sm outline-none focus:ring-2 focus:ring-purple-500 h-8">
+          <div class="flex gap-2">
+            <select id="embeddingModel"
+              class="border border-gray-300 rounded px-2 py-1 bg-gray-50 outline-none focus:ring-2 focus:ring-purple-500 flex-1 h-8">
+              <option value="@cf/baai/bge-m3">@cf/baai/bge-m3</option>
+            </select>
+            <button id="searchByTextBtn" disabled
+              class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded shadow transition disabled:opacity-50 shrink-0 h-8 flex items-center justify-center">
+              Similarity Search
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 数据表格区 -->
+  <div class="flex-1 overflow-auto p-4 bg-gray-50">
+    <div class="border rounded-lg bg-white shadow-sm overflow-hidden">
+      <table class="min-w-full text-left text-sm whitespace-nowrap">
+        <thead class="bg-gray-100 border-b">
+          <tr>
+            <th class="px-4 py-3 w-12 text-center">
+              <input type="checkbox" id="selectAll" class="w-4 h-4 cursor-pointer">
+            </th>
+            <th id="thVectorId" class="px-4 py-3 font-semibold text-gray-600 w-48">Vector ID</th>
+            <th id="thScore" class="px-4 py-3 font-semibold text-gray-600 w-24">Score</th>
+            <th id="thMetadata" class="px-4 py-3 font-semibold text-gray-600">Metadata (JSON)</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody" class="divide-y text-gray-700">
+          <tr>
+            <td id="tdNoData" colspan="4" class="px-4 py-12 text-center text-gray-400">Please select an index and load data</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
