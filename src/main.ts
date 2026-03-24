@@ -18,6 +18,9 @@ const elSearchText = document.getElementById('searchText') as HTMLInputElement;
 const elEmbeddingModel = document.getElementById('embeddingModel') as HTMLSelectElement;
 const btnSearchByText = document.getElementById('searchByTextBtn') as HTMLButtonElement;
 
+const elQueryLimit = document.getElementById('queryLimit') as HTMLInputElement;
+const labelLimit = document.getElementById('labelLimit') as HTMLSpanElement;
+
 const elSelectAll = document.getElementById('selectAll') as HTMLInputElement;
 const btnDeleteSelected = document.getElementById('deleteSelectedBtn') as HTMLButtonElement;
 const elSelectedCount = document.getElementById('selectedCount') as HTMLSpanElement;
@@ -48,7 +51,7 @@ const i18n = {
     selectIndex: '选择 Index:',
     refreshList: '刷新列表',
     refreshCurrent: '刷新当前索引',
-    fetchSample: '随机采样 10 条',
+    fetchSample: '随机采样',
     specificIds: '输入 ID 查找 (逗号分隔)',
     searchButton: '精确查找',
     deleteSelected: '删除选中',
@@ -88,7 +91,8 @@ const i18n = {
     requestError: '请求错误',
     confirm: '确认',
     cancel: '取消',
-    notice: '提示'
+    notice: '提示',
+    limitLabel: '返回数量:'
   },
   en: {
     appName: 'GUI for Cloudflare Vectorize',
@@ -99,7 +103,7 @@ const i18n = {
     selectIndex: 'Select Index:',
     refreshList: 'Refresh List',
     refreshCurrent: 'Refresh Current Index',
-    fetchSample: 'Random Sample 10',
+    fetchSample: 'Random Sample',
     specificIds: 'Input ID lookup (comma separated)',
     searchButton: 'Exact Search',
     deleteSelected: 'Delete Selected',
@@ -139,7 +143,8 @@ const i18n = {
     requestError: 'Request error',
     confirm: 'Confirm',
     cancel: 'Cancel',
-    notice: 'Notice'
+    notice: 'Notice',
+    limitLabel: 'Limit:'
   }
 };
 
@@ -269,6 +274,7 @@ function applyLanguage(lang: 'zh' | 'en') {
   tabSample.textContent = ui.tabSample;
   tabIds.textContent = ui.tabIds;
   tabSearch.textContent = ui.tabSearch;
+  if (labelLimit) labelLimit.textContent = ui.limitLabel;
 
   if (elIndexSelect.options.length === 1 && elIndexSelect.value === "") {
     elIndexSelect.options[0].textContent = ui.connectFirst;
@@ -436,6 +442,9 @@ btnFetchSample.addEventListener('click', async () => {
   const indexName = elIndexSelect.value;
   if (!creds || !indexName || currentDimension === 0) return;
 
+  const topK = parseInt(elQueryLimit.value) || 10;
+  const finalTopK = Math.min(Math.max(1, topK), 50);
+
   elResultBody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-blue-500 animate-pulse">${i18n[currentLang].fetchingSample}</td></tr>`;
 
   const zeroVector = new Array(currentDimension).fill(0);
@@ -446,7 +455,7 @@ btnFetchSample.addEventListener('click', async () => {
       token: creds.token,
       path: `vectorize/v2/indexes/${indexName}/query`,
       method: 'POST',
-      body: { vector: zeroVector, topK: 10, returnValues: false, returnMetadata: 'all' }
+      body: { vector: zeroVector, topK: finalTopK, returnValues: false, returnMetadata: 'all' }
     });
 
     if (data.success) {
@@ -500,6 +509,9 @@ btnSearchByText.addEventListener('click', async () => {
   const model = elEmbeddingModel.value;
   if (!creds || !indexName || !searchText || currentDimension === 0) return;
 
+  const topK = parseInt(elQueryLimit.value) || 10;
+  const finalTopK = Math.min(Math.max(1, topK), 50);
+
   elResultBody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-blue-500 animate-pulse">${i18n[currentLang].generatingVector}</td></tr>`;
 
   try {
@@ -530,7 +542,7 @@ btnSearchByText.addEventListener('click', async () => {
       token: creds.token,
       path: `vectorize/v2/indexes/${indexName}/query`,
       method: 'POST',
-      body: { vector, topK: 10, returnValues: false, returnMetadata: 'all' }
+      body: { vector, topK: finalTopK, returnValues: false, returnMetadata: 'all' }
     });
 
     if (queryData.success) {
@@ -577,8 +589,9 @@ btnDeleteSelected.addEventListener('click', async () => {
   );
   if (!confirmed) return;
 
-  const originText = btnDeleteSelected.innerHTML;
-  btnDeleteSelected.innerHTML = i18n[currentLang].deleting;
+  const btnTextSpan = btnDeleteSelected.querySelector('span') as HTMLElement;
+  const originText = btnTextSpan.textContent || '';
+  btnTextSpan.textContent = i18n[currentLang].deleting;
   btnDeleteSelected.disabled = true;
 
   try {
@@ -609,7 +622,7 @@ btnDeleteSelected.addEventListener('click', async () => {
   } catch (err) {
     showModal(i18n[currentLang].requestError, String(err));
   } finally {
-    btnDeleteSelected.innerHTML = originText;
+    btnTextSpan.textContent = originText;
     updateSelection();
   }
 });
